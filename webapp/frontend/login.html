@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FedHealth — Sign In</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="brand" style="justify-content:center; padding-bottom:1.5rem;">
+        <div class="brand-mark">FH</div>
+        <div><div class="brand-title">FedHealth</div><div class="brand-subtitle">Cross-Hospital FL Portal</div></div>
+      </div>
+
+      <h2 style="text-align:center; margin-top:0;">Sign In</h2>
+
+      <form id="loginForm">
+        <label class="form-label">Username
+          <input type="text" id="username" class="form-input" placeholder="e.g. hospital0, admin, or your patient username" autocomplete="username" required />
+        </label>
+        <label class="form-label">Password
+          <input type="password" id="password" class="form-input" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="primary-btn" style="width:100%; margin-top:0.5rem;">Sign In</button>
+      </form>
+
+      <div id="loginError" class="error-box" hidden></div>
+
+      <p class="hint small" style="margin-top:1.5rem; text-align:center;">
+        Hospital accounts: <code>hospital0</code>/<code>hospital0</code> through <code>hospital19</code>/<code>hospital19</code><br/>
+        Admin account: <code>admin</code>/<code>admin123</code>
+      </p>
+      <p class="hint small" style="text-align:center;">
+        Patient? <a href="/register">Create an account</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const errorBox = document.getElementById("loginError");
+      errorBox.hidden = true;
+
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+        window.location.href = "/";
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>

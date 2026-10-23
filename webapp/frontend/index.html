@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FedHealth — Federated Learning for Cross-Hospital Disease Detection</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">FH</div>
+        <div><div class="brand-title">FedHealth</div><div class="brand-subtitle">Cross-Hospital FL</div></div>
+      </div>
+
+      <nav class="side-nav">
+        <button class="nav-btn active" data-page="overview"><span class="nav-icon">&#9673;</span> Overview</button>
+        <button class="nav-btn hospital-admin-only" data-page="classify"><span class="nav-icon">&#9632;</span> Classify X-Ray</button>
+        <button class="nav-btn hospital-only" data-page="history"><span class="nav-icon">&#9776;</span> My History</button>
+        <button class="nav-btn hospital-admin-only" data-page="batch"><span class="nav-icon">&#9783;</span> Batch Dataset Upload</button>
+        <button class="nav-btn patient-only" data-page="patientupload"><span class="nav-icon">&#9632;</span> Upload X-Ray &amp; Report</button>
+        <button class="nav-btn patient-only" data-page="patientrecords"><span class="nav-icon">&#9776;</span> My Records</button>
+        <button class="nav-btn admin-only" data-page="livetrain"><span class="nav-icon">&#9889;</span> Live Training</button>
+        <button class="nav-btn admin-only" data-page="allhospitals"><span class="nav-icon">&#9737;</span> All Hospitals</button>
+        <button class="nav-btn" data-page="architecture"><span class="nav-icon">&#9636;</span> Architecture</button>
+        <button class="nav-btn" data-page="results"><span class="nav-icon">&#9650;</span> Results &amp; Metrics</button>
+      </nav>
+
+      <div class="sidebar-footer"><p>Personalized Federated Learning via<br/>Similarity-Based Client Clustering</p></div>
+    </aside>
+
+    <main class="content">
+      <div class="top-bar">
+        <span id="topBarUser"></span>
+        <span id="topBarRole" class="role-badge"></span>
+        <a href="/logout">Sign out</a>
+      </div>
+
+      <!-- OVERVIEW -->
+      <section id="overview" class="page active">
+        <div class="page-header">
+          <h1>Federated Learning for Cross-Hospital Disease Detection</h1>
+          <p class="page-subtitle">Chest X-ray classification trained across 20 simulated hospitals without a single patient image ever leaving its source — with similarity-aware client clustering and genuinely live, on-demand federated training.</p>
+        </div>
+        <div class="stat-row">
+          <div class="stat-card"><div class="stat-value">20</div><div class="stat-label">Simulated Hospitals</div></div>
+          <div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Disease Classes</div></div>
+          <div class="stat-card"><div class="stat-value">0</div><div class="stat-label">Images Ever Shared</div></div>
+          <div class="stat-card"><div class="stat-value" id="statBestAcc">—</div><div class="stat-label">Best Cluster Accuracy</div></div>
+        </div>
+        <div class="card">
+          <h2>How It Works</h2>
+          <div class="pipeline">
+            <div class="pipeline-step"><div class="pipeline-num">1</div><div><h3>Local Training</h3><p>Each hospital trains the same CNN on its own private, non-IID X-ray data.</p></div></div>
+            <div class="pipeline-arrow">&#8594;</div>
+            <div class="pipeline-step"><div class="pipeline-num">2</div><div><h3>Similarity Clustering</h3><p>Hospitals share only label proportions. Similar hospitals are grouped together.</p></div></div>
+            <div class="pipeline-arrow">&#8594;</div>
+            <div class="pipeline-step"><div class="pipeline-num">3</div><div><h3>Federated Averaging</h3><p>An admin can trigger a real, live training round from this dashboard.</p></div></div>
+            <div class="pipeline-arrow">&#8594;</div>
+            <div class="pipeline-step"><div class="pipeline-num">4</div><div><h3>Explainable Inference</h3><p>Predictions come with Grad-CAM heatmaps and a derived region-of-interest box.</p></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CLASSIFY (hospital/admin) -->
+      <section id="classify" class="page">
+        <div class="page-header">
+          <h1>Classify a Chest X-Ray</h1>
+          <p class="page-subtitle">Upload an X-ray to get a prediction plus a Grad-CAM heatmap for every possible class.</p>
+        </div>
+        <div class="card upload-card">
+          <div id="dropzone" class="dropzone">
+            <input type="file" id="fileInput" accept="image/*" hidden />
+            <p id="dropzoneText">Drag &amp; drop an X-ray image here, or click to browse</p>
+            <img id="preview" class="preview" hidden />
+          </div>
+          <button id="predictBtn" class="primary-btn" disabled>Classify Image</button>
+          <div id="predictError" class="error-box" hidden></div>
+        </div>
+        <div id="resultCard" class="card" hidden>
+          <h2>Prediction: <span id="predictedClass" class="accent-text"></span></h2>
+          <p class="confidence">Confidence: <span id="confidenceValue"></span></p>
+          <h3 class="section-label">Class Probabilities</h3>
+          <div id="probBars" class="prob-bars"></div>
+          <h3 class="section-label" style="margin-top:1.5rem;">Grad-CAM Attention — All Classes</h3>
+          <p class="hint small">The white box is a coarse region of interest derived from the model's own attention map, not a separately trained detector.</p>
+          <div id="heatmapGrid" class="heatmap-grid"></div>
+        </div>
+      </section>
+
+      <!-- MY HISTORY (hospital) -->
+      <section id="history" class="page">
+        <div class="page-header">
+          <h1>My Prediction History</h1>
+          <p class="page-subtitle">Every X-ray your hospital account has classified, most recent first.</p>
+        </div>
+        <div class="card">
+          <div id="historyTableWrap"></div>
+          <div id="historyError" class="error-box" hidden></div>
+        </div>
+      </section>
+
+      <!-- BATCH UPLOAD (hospital/admin) -->
+      <section id="batch" class="page">
+        <div class="page-header">
+          <h1>Batch Dataset Upload</h1>
+          <p class="page-subtitle">Upload a .zip file containing multiple X-ray images (.png/.jpg). Every image inside is classified and logged, with results shown as a table.</p>
+        </div>
+        <div class="card upload-card">
+          <div id="batchDropzone" class="dropzone">
+            <input type="file" id="batchFileInput" accept=".zip" hidden />
+            <p id="batchDropzoneText">Drag &amp; drop a .zip of X-rays here, or click to browse</p>
+          </div>
+          <button id="batchSubmitBtn" class="primary-btn" disabled>Classify Dataset</button>
+          <div id="batchError" class="error-box" hidden></div>
+        </div>
+        <div id="batchResultCard" class="card" hidden>
+          <h2>Batch Results</h2>
+          <div id="batchSummary" class="summary-cards"></div>
+          <div id="batchTableWrap" style="margin-top:1rem;"></div>
+        </div>
+      </section>
+
+      <!-- PATIENT: UPLOAD X-RAY & REPORT -->
+      <section id="patientupload" class="page">
+        <div class="page-header">
+          <h1>Upload X-Ray &amp; Report</h1>
+          <p class="page-subtitle">Upload your chest X-ray to get a classification, then optionally upload a scan/photo of your written report — its text will be extracted and shown back to you.</p>
+        </div>
+
+        <div class="card upload-card">
+          <h2>1. Chest X-Ray</h2>
+          <div id="patXrayDropzone" class="dropzone">
+            <input type="file" id="patXrayInput" accept="image/*" hidden />
+            <p id="patXrayDropzoneText">Drag &amp; drop your X-ray here, or click to browse</p>
+            <img id="patXrayPreview" class="preview" hidden />
+          </div>
+          <button id="patXrayBtn" class="primary-btn" disabled>Classify My X-Ray</button>
+          <div id="patXrayError" class="error-box" hidden></div>
+        </div>
+
+        <div id="patXrayResultCard" class="card" hidden>
+          <h2>Prediction: <span id="patPredictedClass" class="accent-text"></span></h2>
+          <p class="confidence">Confidence: <span id="patConfidenceValue"></span></p>
+          <div id="patProbBars" class="prob-bars"></div>
+        </div>
+
+        <div class="card upload-card">
+          <h2>2. Written Report (optional)</h2>
+          <p class="hint small">This extracts and displays the text in your report — it does not diagnose or interpret it. Upload a clear photo or scan.</p>
+          <div id="patReportDropzone" class="dropzone">
+            <input type="file" id="patReportInput" accept="image/*" hidden />
+            <p id="patReportDropzoneText">Drag &amp; drop your report image here, or click to browse</p>
+          </div>
+          <button id="patReportBtn" class="primary-btn" disabled>Extract Report Text</button>
+          <div id="patReportError" class="error-box" hidden></div>
+        </div>
+
+        <div id="patReportResultCard" class="card" hidden>
+          <h2>Extracted Report Text</h2>
+          <div id="patReportKeywords" class="network-legend" style="margin-bottom:0.75rem;"></div>
+          <p id="patReportText" class="hint" style="white-space:pre-wrap; line-height:1.6;"></p>
+        </div>
+      </section>
+
+      <!-- PATIENT: MY RECORDS -->
+      <section id="patientrecords" class="page">
+        <div class="page-header">
+          <h1>My Records</h1>
+          <p class="page-subtitle">All your past X-ray and report uploads.</p>
+        </div>
+        <div class="card">
+          <div id="patientRecordsWrap"></div>
+          <div id="patientRecordsError" class="error-box" hidden></div>
+        </div>
+        <div id="patientRecordDetailCard" class="card" hidden>
+          <h2>Record Detail</h2>
+          <div id="patientRecordDetail"></div>
+        </div>
+      </section>
+
+      <!-- LIVE TRAINING (admin) -->
+      <section id="livetrain" class="page">
+        <div class="page-header">
+          <h1>Live Federated Training</h1>
+          <p class="page-subtitle">Select hospitals and start a REAL federated training run — local training + weighted FedAvg averaging happens live, on this server, right now.</p>
+        </div>
+        <div class="card">
+          <h2>Configure a Run</h2>
+          <div id="hospitalPicker" class="hospital-picker"></div>
+          <label class="sim-select-label">Rounds:
+            <select id="numRoundsSelect" class="sim-select">
+              <option value="3">3</option><option value="5" selected>5</option><option value="8">8</option>
+            </select>
+          </label>
+          <div style="margin-top:1rem; display:flex; gap:0.75rem;">
+            <button id="startTrainBtn" class="primary-btn">&#9889; Start Live Training</button>
+            <button id="stopTrainBtn" class="secondary-btn" disabled>&#9632; Stop</button>
+          </div>
+          <div id="trainError" class="error-box" hidden></div>
+        </div>
+        <div class="card">
+          <h2>Live Progress</h2>
+          <div class="sim-round-info">
+            <div>Round <span id="liveRoundLabel">—</span></div>
+            <div>Global Accuracy: <span id="liveAccLabel">—</span></div>
+            <div>Status: <span id="liveStatusLabel">Idle</span></div>
+          </div>
+          <div class="chart-wrapper small"><canvas id="liveChart"></canvas></div>
+          <div class="event-log" id="liveEventLog"></div>
+        </div>
+        <div class="card">
+          <h2>Past Training Runs</h2>
+          <div id="runsTableWrap"></div>
+        </div>
+      </section>
+
+      <!-- ALL HOSPITALS (admin) -->
+      <section id="allhospitals" class="page">
+        <div class="page-header">
+          <h1>All Hospitals</h1>
+          <p class="page-subtitle">Every simulated hospital, its cluster membership, and how many predictions it has logged.</p>
+        </div>
+        <div class="card">
+          <div id="allHospitalsTableWrap"></div>
+          <div id="allHospitalsError" class="error-box" hidden></div>
+        </div>
+      </section>
+
+      <!-- ARCHITECTURE -->
+      <section id="architecture" class="page">
+        <div class="page-header">
+          <h1>Model Architecture</h1>
+          <p class="page-subtitle">The exact CNN deployed in this app, introspected live from the loaded model file.</p>
+        </div>
+        <div class="card">
+          <div id="archSummary" class="stat-row"></div>
+          <div id="archDiagram" class="arch-diagram"></div>
+          <div id="archError" class="error-box" hidden></div>
+        </div>
+      </section>
+
+      <!-- RESULTS -->
+      <section id="results" class="page">
+        <div class="page-header">
+          <h1>Results &amp; Metrics</h1>
+          <p class="page-subtitle">Baseline single-model FedAvg vs. similarity-clustered FedAvg, plus detailed test-set performance.</p>
+        </div>
+        <div class="card">
+          <h2>Training Accuracy: Baseline vs. Clustered</h2>
+          <div class="chart-wrapper"><canvas id="resultsChart"></canvas></div>
+          <div id="summaryCards" class="summary-cards"></div>
+        </div>
+        <div class="card">
+          <h2>Confusion Matrix</h2>
+          <p class="hint">Rows are true class, columns are predicted class.</p>
+          <div id="confusionMatrixWrap"></div>
+        </div>
+        <div class="card">
+          <h2>Per-Class Precision / Recall / F1</h2>
+          <div class="chart-wrapper small"><canvas id="metricsChart"></canvas></div>
+        </div>
+        <div id="resultsError" class="error-box" hidden></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

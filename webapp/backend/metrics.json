@@ -1,0 +1,62 @@
+{
+  "classes": [
+    "COVID",
+    "Normal",
+    "Lung_Opacity",
+    "Viral_Pneumonia"
+  ],
+  "confusion_matrix": [
+    [
+      345,
+      8,
+      8,
+      0
+    ],
+    [
+      2,
+      984,
+      32,
+      1
+    ],
+    [
+      2,
+      71,
+      528,
+      0
+    ],
+    [
+      2,
+      2,
+      0,
+      130
+    ]
+  ],
+  "per_class": {
+    "COVID": {
+      "precision": 0.9829,
+      "recall": 0.9557,
+      "f1": 0.9691,
+      "support": 361
+    },
+    "Normal": {
+      "precision": 0.9239,
+      "recall": 0.9657,
+      "f1": 0.9443,
+      "support": 1019
+    },
+    "Lung_Opacity": {
+      "precision": 0.9296,
+      "recall": 0.8785,
+      "f1": 0.9033,
+      "support": 601
+    },
+    "Viral_Pneumonia": {
+      "precision": 0.9924,
+      "recall": 0.9701,
+      "f1": 0.9811,
+      "support": 134
+    }
+  },
+  "overall_accuracy": 0.9395,
+  "total_test_samples": 2115
+}

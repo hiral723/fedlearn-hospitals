@@ -1,0 +1,21 @@
+# environments and caches
+venv/
+__pycache__/
+*.pyc
+.vscode/
+
+# datasets (too big for GitHub)
+data/raw/
+data/processed/
+*.zip
+
+# private runtime data: accounts, patient records, uploads
+webapp/backend/fedhealth.db
+webapp/backend/uploads/xrays/*
+webapp/backend/uploads/reports/*
+!webapp/backend/uploads/xrays/.gitkeep
+!webapp/backend/uploads/reports/.gitkeep
+
+# logs
+run_log.txt
+*.log

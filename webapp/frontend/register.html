@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FedHealth — Patient Registration</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="brand" style="justify-content:center; padding-bottom:1.5rem;">
+        <div class="brand-mark">FH</div>
+        <div><div class="brand-title">FedHealth</div><div class="brand-subtitle">Patient Registration</div></div>
+      </div>
+
+      <h2 style="text-align:center; margin-top:0;">Create a Patient Account</h2>
+      <p class="hint small" style="text-align:center; margin-bottom:1.25rem;">
+        Only patient accounts self-register here. Hospital and admin accounts are provisioned separately.
+      </p>
+
+      <form id="registerForm">
+        <label class="form-label">Full Name
+          <input type="text" id="displayName" class="form-input" required />
+        </label>
+        <label class="form-label">Username
+          <input type="text" id="username" class="form-input" autocomplete="username" required />
+        </label>
+        <label class="form-label">Password
+          <input type="password" id="password" class="form-input" autocomplete="new-password" required />
+        </label>
+        <button type="submit" class="primary-btn" style="width:100%; margin-top:0.5rem;">Create Account</button>
+      </form>
+
+      <div id="registerError" class="error-box" hidden></div>
+
+      <p class="hint small" style="margin-top:1.5rem; text-align:center;">
+        Already have an account? <a href="/login">Sign in</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const display_name = document.getElementById("displayName").value;
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const errorBox = document.getElementById("registerError");
+      errorBox.hidden = true;
+
+      try {
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password, display_name }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Registration failed");
+        window.location.href = "/";
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>
